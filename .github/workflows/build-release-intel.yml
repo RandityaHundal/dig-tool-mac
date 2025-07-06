@@ -1,4 +1,4 @@
-name: Build and Release with PyInstaller
+name: Build and Release (macOS Intel)
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: windows-latest
+    runs-on: macos-latest
 
     steps:
       - name: Check-out repository
@@ -33,19 +33,21 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install opencv-python numpy Pillow keyboard pywin32 pynput requests pyautoit pyinstaller
+          pip install -r requirements.txt
 
       - name: Build Executable with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --name=DigTool --icon=assets/icon.ico --add-data="assets;assets" --add-data="core;core" --add-data="interface;interface" --add-data="utils;utils" --collect-all=autoit --distpath=dist --workpath=build --specpath=. --clean main.py
+          python compile.py
 
-      - name: Get executable name
-        id: get_exe_name
+      - name: Prepare for Release
+        id: prepare_release
         run: |
-          $exeName = (Get-ChildItem -Path "dist" -Filter "*.exe" | Select-Object -First 1).Name
-          echo "exe_name=$exeName" >> $env:GITHUB_OUTPUT
-          echo "exe_path=dist/$exeName" >> $env:GITHUB_OUTPUT
-        shell: powershell
+          APP_NAME=$(basename dist/*.app)
+          ZIP_NAME="${APP_NAME%.app}-intel.zip"
+          zip -r "dist/$ZIP_NAME" "dist/$APP_NAME"
+          echo "zip_path=dist/$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: Create Release
         id: create_release
@@ -65,6 +67,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.get_exe_name.outputs.exe_path }}
-          asset_name: ${{ steps.get_exe_name.outputs.exe_name }}
-          asset_content_type: application/octet-stream
+          asset_path: ${{ steps.prepare_release.outputs.zip_path }}
+          asset_name: ${{ steps.prepare_release.outputs.zip_name }}
+          asset_content_type: application/zip
