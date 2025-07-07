@@ -43,11 +43,24 @@ jobs:
         run: |
           echo "${{ secrets.SIGNING_CERTIFICATE }}" > certificate.crt
           echo "${{ secrets.SIGNING_KEY }}" > private.key
-          security create-keychain -p "" build.keychain
+          
+          echo "--- Verifying created files ---"
+          ls -l certificate.crt private.key
+          echo "--- Certificate first line ---"
+          head -n 1 certificate.crt
+          echo "--- Key first line ---"
+          head -n 1 private.key
+          echo "---------------------------"
+
+          KEYCHAIN_PASSWORD="build-keychain-password"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security import certificate.crt -k build.keychain -T /usr/bin/codesign
           security import private.key -k build.keychain -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
-          codesign --force --deep --sign "DigTool" "dist/DigTool.app"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          
+          codesign --force --deep --sign "DigTool" "dist/DigTool.app" --keychain build.keychain
         shell: bash
 
       - name: Prepare for Release
