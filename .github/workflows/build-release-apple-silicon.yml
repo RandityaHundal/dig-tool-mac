@@ -54,22 +54,20 @@ jobs:
           # Import the P12 file into the keychain
           security import certificate.p12 -k "$KEYCHAIN_PATH" -P "${{ secrets.SIGNING_P12_PASSWORD }}" -T /usr/bin/codesign
 
-          # Allow codesign to access the keychain without prompts
+          # Make sure it's in the keychain search list (and only this one, ideally)
+          security list-keychains -s "$KEYCHAIN_PATH"
+
+          # Allow codesign to access the private key (essential for non-GUI sessions)
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # Get the SHA-1 hash of the certificate from the keychain
-          CERT_SHA1=$(security find-certificate -c "DigTool" -Z "$KEYCHAIN_PATH" 2>&1 | grep SHA-1 | awk '{print $3}')
+          # Find the exact identity name from the keychain
+          IDENTITY_NAME=$(security find-identity -v "$KEYCHAIN_PATH" | grep "DigTool" | head -n 1 | sed -e 's/^[[:space:]]*[0-9]) //g' -e 's/"$//g')
 
-          echo "Found certificate SHA-1: '$CERT_SHA1'"
-          if [ -z "$CERT_SHA1" ]; then
-            echo "Error: Could not find certificate SHA-1. Ensure the common name in your certificate is 'DigTool'."
+          echo "Found signing identity: '$IDENTITY_NAME'"
+          if [ -z "$IDENTITY_NAME" ]; then
+            echo "Error: Could not find signing identity. Please ensure the common name in your certificate is 'DigTool'."
             exit 1
           fi
-
-          echo "Signing app bundle at: dist/DigTool.app"
-
-          # Sign the application using the SHA-1 hash
-          codesign --force --deep --sign "$CERT_SHA1" "dist/DigTool.app" --keychain "$KEYCHAIN_PATH"
 
           echo "Signing app bundle at: dist/DigTool.app"
 
