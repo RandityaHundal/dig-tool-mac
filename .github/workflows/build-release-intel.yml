@@ -41,20 +41,18 @@ jobs:
 
       - name: Sign Application
         run: |
-          echo "${{ secrets.SIGNING_CERTIFICATE }}" > certificate.crt
-          echo "${{ secrets.SIGNING_KEY }}" > private.key
+          # Decode the P12 file from the base64 secret
+          echo "${{ secrets.SIGNING_P12_BASE64 }}" | base64 --decode > certificate.p12
 
+          # Create a temporary keychain
           KEYCHAIN_PASSWORD="build-keychain-password"
           KEYCHAIN_PATH=build.keychain
-
-          # Create and setup keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security default-keychain -s "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # Import certificate and key
-          security import certificate.crt -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
-          security import private.key -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+          # Import the P12 file into the keychain
+          security import certificate.p12 -k "$KEYCHAIN_PATH" -P "${{ secrets.SIGNING_P12_PASSWORD }}" -T /usr/bin/codesign
 
           # Allow codesign to access the keychain without prompts
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
