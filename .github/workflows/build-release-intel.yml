@@ -58,12 +58,17 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           # Find the exact identity name from the keychain
-          # We'll try to find it by grepping for the common name "DigTool"
-          IDENTITY_NAME=$(security find-identity -v "$KEYCHAIN_PATH" | grep "DigTool" | head -n 1 | sed -e 's/^[[:space:]]*[0-9]) //g' -e 's/"$//g')
+          echo "--- Raw output of security find-identity ---"
+          RAW_IDENTITY_OUTPUT=$(security find-identity -v "$KEYCHAIN_PATH")
+          echo "$RAW_IDENTITY_OUTPUT"
+          echo "-----------------------------------------"
+
+          # Attempt to extract the identity name
+          IDENTITY_NAME=$(echo "$RAW_IDENTITY_OUTPUT" | grep "DigTool" | head -n 1 | sed -e 's/^[[:space:]]*[0-9]) //g' -e 's/"$//g')
 
           echo "Extracted signing identity: '$IDENTITY_NAME'"
           if [ -z "$IDENTITY_NAME" ]; then
-            echo "Error: Could not extract signing identity. Please ensure the common name in your certificate is 'DigTool' and that the certificate is correctly imported."
+            echo "Error: Could not extract signing identity. Please ensure the common name in your certificate is 'DigTool' and that the certificate is correctly imported. Raw output of 'security find-identity' is above."
             exit 1
           fi
 
