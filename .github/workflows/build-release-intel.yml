@@ -60,13 +60,19 @@ jobs:
           # Allow codesign to access the keychain without prompts
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # Use the known Common Name as the signing identity
-          IDENTITY_NAME="DigTool"
+          # Get the SHA-1 hash of the certificate from the keychain
+          CERT_SHA1=$(security find-certificate -c "DigTool" -Z "$KEYCHAIN_PATH" 2>&1 | grep SHA-1 | awk '{print $3}')
 
-          echo "Signing app bundle with identity: '$IDENTITY_NAME'"
+          echo "Found certificate SHA-1: '$CERT_SHA1'"
+          if [ -z "$CERT_SHA1" ]; then
+            echo "Error: Could not find certificate SHA-1. Ensure the common name in your certificate is 'DigTool'."
+            exit 1
+          fi
 
-          # Sign the application using the found identity
-          codesign --force --deep --sign "$IDENTITY_NAME" "dist/DigTool.app" --keychain "$KEYCHAIN_PATH"
+          echo "Signing app bundle at: dist/DigTool.app"
+
+          # Sign the application using the SHA-1 hash
+          codesign --force --deep --sign "$CERT_SHA1" "dist/DigTool.app" --keychain "$KEYCHAIN_PATH"
 
           echo "Signing app bundle at: dist/DigTool.app"
 
