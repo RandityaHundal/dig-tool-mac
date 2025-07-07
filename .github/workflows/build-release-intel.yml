@@ -60,17 +60,13 @@ jobs:
           # Allow codesign to access the keychain without prompts
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # Export the certificate from the keychain and extract its Common Name
-          security find-certificate -p -a -c "DigTool" "$KEYCHAIN_PATH" > exported_certificate.pem
-          IDENTITY_NAME=$(openssl x509 -noout -subject -in exported_certificate.pem | sed -n 's/.*CN=\([^\/]*\).*/\1/p')
+          # Use the known Common Name as the signing identity
+          IDENTITY_NAME="DigTool"
 
-          echo "Extracted signing identity: '$IDENTITY_NAME'"
-          if [ -z "$IDENTITY_NAME" ]; then
-            echo "Error: Could not extract signing identity. Please ensure the common name in your certificate is 'DigTool'."
-            exit 1
-          fi
+          echo "Signing app bundle with identity: '$IDENTITY_NAME'"
 
-          echo "Signing app bundle at: dist/DigTool.app"
+          # Sign the application using the found identity
+          codesign --force --deep --sign "$IDENTITY_NAME" "dist/DigTool.app" --keychain "$KEYCHAIN_PATH"
 
           echo "Signing app bundle at: dist/DigTool.app"
 
