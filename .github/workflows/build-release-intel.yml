@@ -58,9 +58,18 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           # Find the exact identity name from the keychain
+          echo "--- Raw output of security find-identity ---"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo "-----------------------------------------"
+
           IDENTITY_NAME=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -n 1 | sed -e 's/^[[:space:]]*[0-9]) "//' -e 's/"$//')
 
-          echo "Found signing identity: $IDENTITY_NAME"
+          echo "Extracted signing identity: '$IDENTITY_NAME'"
+          if [ -z "$IDENTITY_NAME" ]; then
+            echo "Error: Could not extract signing identity. Check the raw output above."
+            exit 1
+          fi
+
           echo "Signing app bundle at: dist/DigTool.app"
 
           # Sign the application using the found identity
