@@ -54,15 +54,15 @@ jobs:
           # Import the P12 file into the keychain
           security import certificate.p12 -k "$KEYCHAIN_PATH" -P "${{ secrets.SIGNING_P12_PASSWORD }}" -T /usr/bin/codesign
 
+          echo "--- Keychain Contents After Import ---"
+          security contents -k "$KEYCHAIN_PATH"
+          echo "--------------------------------------"
+
           # Allow codesign to access the keychain without prompts
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           # Find the exact identity name from the keychain
-          echo "--- Raw output of security find-identity ---"
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-          echo "-----------------------------------------"
-
-          IDENTITY_NAME=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -n 1 | sed -e 's/^[[:space:]]*[0-9]) "//' -e 's/"$//')
+          IDENTITY_NAME=$(security find-identity -v "$KEYCHAIN_PATH" | grep "DigTool" | head -n 1 | sed -e 's/^[[:space:]]*[0-9]) //' -e 's/"$//')
 
           echo "Extracted signing identity: '$IDENTITY_NAME'"
           if [ -z "$IDENTITY_NAME" ]; then
